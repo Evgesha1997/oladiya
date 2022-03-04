@@ -1,139 +1,284 @@
 #include <iostream>
-#include <fstream>
 #include <cmath>
-#include <string>
+#include <iomanip>
+#include <stdlib.h>
+#include "matrix.h"
 using namespace std;
-#define SIZE 100
 
-void readf_matrix(int &size, double matrix[SIZE][SIZE]){
-    int i, j;
-    string fname;
-    
-    cin >> fname;
-    ifstream fin(fname.c_str());
-    
-    fin >> size;
-    if (size != 0)
-        for (i = 0; i < size; i++)
-            for (j = 0; j < size; j++)
-                fin >> matrix[i][j];
-    else{
-        cout << "Файлы пусты или хотябы одна из матриц размера 0х0" << endl;
-        exit;
-    }
+// Проверка введённых данных на действительное значение
+double check_double()
+{
+	double num;
+	cin >> num;
+	while (cin.fail())
+	{
+		cin.clear();
+		cin.ignore(32767, '\n');
+		cout << "Некорректный ввод! Элементы матриц должны соответствовать типу double:\n";
+		cin >> num;
+	}
+	return num;
 }
 
-//умножает матрицу на число (не меняет исходную матрицу)
-void multiplication_by_number(const int size, const double factor, double matrix[SIZE][SIZE], double result_matrix[SIZE][SIZE]){
-    int i, j;
-    for (i = 0; i < size; i++)
-        for (j = 0; j < size; j++)
-            result_matrix[i][j] = matrix[i][j] * factor;
+// Ввод матрицы 
+void input(double** matrix, int size) {
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			cin >> matrix[i][j];
+	// 			matrix[i][j] = check_double();
+} /*#*/
+
+// Проверка введённых данных на натуральное значение
+int check_matrix_size()
+{
+	int num;
+	cin >> num;
+	while (cin.fail() || num < 1)
+	{
+		cin.clear();
+		cin.ignore(32767, '\n');
+		cout << "Некорректный ввод! Введите пожалуйста целочисленные размеры матрицы: ";
+		cin >> num;
+	}
+	return num;
 }
 
-void copy_matrix(const int size, double matrix[SIZE][SIZE], double result_matrix[SIZE][SIZE]){
-    int i, j;
-    for (i = 0; i < size; i++)
-        for (j = 0; j < size; j++)
-            result_matrix[i][j] = matrix[i][j];
+// Создание матрицы
+double** create_matrix(int size)
+{
+	double** matr = new double* [size];
+	for (int i = 0; i < size; i++)
+	{
+		matr[i] = new double[size];
+		for (int j = 0; j < size; j++)
+			matr[i][j] = 0;
+	}
+	return matr;
 }
 
-//универсальная функция по поиску матрицы произведения двух матриц
-void multiplication_of_two_matrix(const int size, double matrix_1[SIZE][SIZE], double matrix_2[SIZE][SIZE], double result_matrix[SIZE][SIZE]){
-    int i, j, k;
-    double element;
-    for (i = 0; i < size; i++){
-        for (j  = 0; j < size; j++){
-            element = 0;
-            for (k = 0; k < size; k++)
-                element += matrix_1[i][k] * matrix_2[k][j];
-            result_matrix[i][j] = element;
-        }
-    }
+// Очитска памяти, занимаемой матрицей
+void free(double** matr, int size)
+{
+	for (int i = 0; i < size; i++)
+		delete[] matr[i];
+	delete[] matr;
+	matr = 0;
 }
 
-//вычисление суммы двух матриц
-void calc_sum_two_matrix(const int size, double matrix_1[SIZE][SIZE], double matrix_2[SIZE][SIZE], double result_matrix[SIZE][SIZE]){
-    int i, j;
-    for (i = 0; i < size; i++)
-        for (j = 0; j < size; j++)
-            result_matrix[i][j] = matrix_1[i][j] + matrix_2[i][j];
+// Вывод матрицы на экран
+void output(double** matr, int size)
+{
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+			cout << setw(10) << matr[i][j];
+		cout << '\n';
+	}
+	cout << '\n';
 }
 
-//составляет минор входной матрицы по i-ому j-ому элементу 
-void make_minor(const int size, double matrix[SIZE][SIZE], const int str, const int col, double result_matrix[SIZE][SIZE]){
-    int i, j;
-    for (i = 0; i < size; i++)
-        for (j = 0; j < size; j++){
-            if (i < str){
-                if (j < col)
-                    result_matrix[i][j] = matrix[i][j];
-                if (j > col)
-                    result_matrix[i][j-1] = matrix[i][j];
-            }
-            if (i > str){
-                if (j < col)
-                    result_matrix[i-1][j] = matrix[i][j];
-                if (j > col)
-                    result_matrix[i-1][j-1] = matrix[i][j];
-            }
-        }
+// Создание минора по заданным строке и столбцу
+double** create_minor(double** matr, int size, int row, int col)
+{
+	double** minor = create_matrix(size - 1);
+	for (int i = 0; i < size - 1; i++)
+		for (int j = 0; j < size - 1; j++)
+		{
+			if (i < row && j < col)
+				minor[i][j] = matr[i][j];
+			if (i < row && j >= col)
+				minor[i][j] = matr[i][j + 1];
+			if (i >= row && j < col)
+				minor[i][j] = matr[i + 1][j];
+			if (i >= row && j >= col)
+				minor[i][j] = matr[i + 1][j + 1];
+		}
+	return minor;
 }
 
-//вычисляет определитель квадратной матрицы
-double calc_determ(const int size, double matrix[SIZE][SIZE]){
-    double det = 0;
-    int degree = 1;
-    //Условие выхода из рекурсии
-    if(size == 1) 
-        return matrix[0][0];
-    //Условие выхода из рекурсии
-    else if(size == 2) 
-        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
-    else{
-        double temp_matrix[SIZE][SIZE];
-        for (int j=  0; j < size; j++){
-            make_minor(size, matrix, 0, j, temp_matrix);
-            det = det + (degree * matrix[0][j] * calc_determ(size-1, temp_matrix));
-            degree = -degree;
-        }
-    }
-    return det;
+// Нахождение определителя матрицы
+double determinant(double** matr, int size)
+{
+	if (size == 1)
+		return matr[0][0];
+	else
+	{
+		double det = 0;
+		for (int j = 0; j < size; j++)
+			det += matr[0][j] * pow(-1, j) * determinant(create_minor(matr, size, 0, j), size - 1);
+		return det;
+	}
 }
 
-//вычисляет обратную матрицу (проверить отличность определителя от 0 при вызове)
-bool calc_inverse_matrix(const int size, double matrix[SIZE][SIZE], double result_matrix[SIZE][SIZE]){
-    int i, j;
-    if (size == 1)
-        if (matrix[0][0] != 0){
-            result_matrix[0][0] = 1.0 / matrix[0][0];
-            return true;
-        }
-        else{
-            cout << "Не существует обратной матрицы" << endl;
-            return false;
-        }
-    
-    double determ = 0, temp_matrix[SIZE][SIZE];
-    determ = calc_determ(size, matrix);
-    for (i = 0; i < size; i++)
-        for (j = 0; j < size; j++){
-            make_minor(size, matrix, j, i, temp_matrix);
-            result_matrix[i][j] = pow(-1, i+j) * calc_determ(size-1, temp_matrix) / determ;
-        }
-    return true;
+// Нахождение обратной матрицы (перед вызовом нужна проверка на det != 0)
+double** revers_matrix(double** matr, int size)
+{
+	double** rev_matr = create_matrix(size);
+	double det = determinant(matr, size);
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			rev_matr[i][j] = 1 / det * pow(-1, i + j) * determinant(create_minor(matr, size, j, i), size - 1);
+	return rev_matr;
 }
 
-//вывод матрицы
-void output_matrix(const int n, double matrix[SIZE][SIZE]){
-    int i, j;
-    string fname;
-    cout << "Введите название файла для вывода результата: " << endl;
-    cin >> fname;
-    ofstream fout(fname.c_str());
-    for (i = 0; i < n; i++){
-        for (j = 0; j < n; j++)
-            fout << matrix[i][j] << " ";
-        fout << endl;
-    }
+// Сложение двух матриц
+double** summation_matrixs(double** matr1, double** matr2, int size)
+{
+	double** matr_copy = create_matrix(size);
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			matr_copy[i][j] = matr1[i][j] + matr2[i][j];
+	return matr_copy;
+}
+
+// // Прибавление к матрице числа 
+// double** summation_matrix_num(double** matr, int size, double num)
+// {
+// 	double** unit_matrix = create_matrix(size);
+// 	double** matr_copy = create_matrix(size);
+// 	unit_matrix = multiply_matrix_num(unit_matrix, size, 0);
+// 	for (int i = 0; i < size; i++)
+// 		unit_matrix[i][i] = num;
+// 	matr_copy = summation_matrixs(matr, unit_matrix, size);
+// 	free(unit_matrix, size);
+// 	return matr_copy;
+// }
+
+// Прибавление к матрице числа 
+double** summation_matrix_num(double** matr, int size, double num)
+{
+	double** matr_copy = create_matrix(size);
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			if (i != j)
+				matr_copy[i][j] = matr[i][j];
+			else
+				matr_copy[i][j] = matr[i][j] + num;
+	return matr_copy;
+}  /*#*/
+
+// Умножение матрицы на число
+double** multiply_matrix_num(double** matr, int size, double num)
+{
+	double** matr_copy = create_matrix(size);
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			matr_copy[i][j] = matr[i][j] * num;
+	return matr_copy;
+}
+
+// Умножение 2х матриц
+double** multiply_matrixs(double** matr1, double** matr2, int size)
+{
+	double** matr = create_matrix(size);
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+		{
+			matr[i][j] = 0;
+			for (int s = 0; s < size; s++)
+				matr[i][j] += matr1[i][s] * matr2[s][j];
+		}
+	return matr;
+}
+
+/*// Вычисление f(x) = x^3-6x^2-5x+10 (вывод каждого шага)
+double** main_func1(double** matrix, int size)
+{
+	double** element1 = create_matrix(size), ** element2 = create_matrix(size), ** element3 = create_matrix(size);
+
+	cout << "x^3:\n";
+	element1 = multiply_matrixs(multiply_matrixs(matrix, matrix, size), matrix, size);
+	output(element1, size);
+
+	cout << "-6x^2:\n";
+	element2 = multiply_matrixs(matrix, matrix, size);
+	element2 = multiply_matrix_num(element2, size, -6);
+	output(element2, size);
+
+	cout << "-5x:\n";
+	element3 = multiply_matrix_num(matrix, size, -5);
+	output(element3, size);
+
+	cout << "x^3-6x^2:\n";
+	element1 = summation_matrixs(element1, element2, size);
+	output(element1, size);
+
+	cout << "(x^3-6x^2)-5x:\n";
+	element1 = summation_matrixs(element1, element3, size);
+	output(element1, size);
+
+	cout << "(x^3-6x^2-5x)+10:\n";
+	element1 = summation_matrix_num(element1, size, 10);
+	output(element1, size);
+
+	free(element2, size);
+	free(element3, size);
+	return element1;
+}*/
+
+// Вычисление f(x) = x^3-6x^2-5x+10 (вывод каждого шага)
+double** calc_matrix_polinom(double** matrix, int size)
+{
+	double** element1 = create_matrix(size), ** element2 = create_matrix(size), ** element3 = create_matrix(size);
+
+	element1 = multiply_matrixs(multiply_matrixs(matrix, matrix, size), matrix, size);
+	element2 = multiply_matrixs(matrix, matrix, size);
+	element2 = multiply_matrix_num(element2, size, -6);
+	element3 = multiply_matrix_num(matrix, size, -5);
+	element1 = summation_matrixs(element1, element2, size);
+	element1 = summation_matrixs(element1, element3, size);
+	element1 = summation_matrix_num(element1, size, 10);
+
+	free(element2, size);
+	free(element3, size);
+	return element1;
+}
+
+/*// Вычисление значения системы уравнений 2X + Y = C1  и  X - 2Y = C2, где C1 = A', C2 = B' (A' и B' вычисляются до вызова этой фукции)
+void main_func3(double** C1, double** C2, int size)
+{
+	cout << "2X + Y = C1  ------>  Y = C1 - 2X" << '\n';
+	cout << "X - 2Y = C2  ------>  X - 2C1 + 4X = C2  ------>   5X = C2 + 2C1  ------->  X = (C2 + 2C1) / 5" << '\n';
+	cout << '\n' << "Вычислим  X = (C2 + 2C1) / 5" << '\n';
+	cout << '\n' << "2С1:" << '\n';
+	double** element = create_matrix(size);
+	element = multiply_matrix_num(C1, size, 2);
+	output(element, size);
+	cout << '\n' << "C2 + 2С1:" << '\n';
+	element = summation_matrixs(C2, element, size);
+	output(element, size);
+	cout << '\n' << "X = (C2 + 2С1) / 5:" << '\n';
+	element = multiply_matrix_num(element, size, 0.2);
+	output(element, size);
+	cout << '\n' << '\n' << '\n';
+
+	cout << "2X + Y = C1  ------>  2X = C1 - Y" << '\n';
+	cout << "X - 2Y = C2  ------>  X = C2 + 2Y  ------>   2X = 2C2 + 4Y  ------->  C1 - Y = 2C2  = 4Y " << '\n';
+	cout << "5Y = C1 - 2C2  ------>  Y = (C1 - 2C2) / 5" << '\n';
+	cout << '\n' << "Вычислим  Y = (C1 - 2C2) / 5" << '\n';
+	cout << '\n' << "-2С2:" << '\n';
+	element = multiply_matrix_num(C2, size, -2);
+	output(element, size);
+	cout << '\n' << "C1 - 2C2:" << '\n';
+	element = summation_matrixs(C1, element, size);
+	output(element, size);
+	cout << '\n' << "Y = (C1 - 2C2) / 5:" << '\n';
+	element = multiply_matrix_num(element, size, 0.2);
+	output(element, size);
+}*/
+
+// Вычисление значения системы уравнений 2X + Y = C1  и  X - 2Y = C2, где C1 = A', C2 = B' (A' и B' вычисляются до вызова этой фукции)
+void solve_matrix_equat_system(double** C1, double** C2, int size)
+{
+	cout << "2X + Y = C1  --->  Y = C1 - 2X\n";
+	cout << "X - 2Y = C2  --->  X - 2C1 + 4X = C2  --->   5X = C2 + 2C1  ---->  X = (C2 + 2C1) / 5\n";
+	cout << "\nX = (C2 + 2C1) / 5\n";
+	double** element = create_matrix(size);
+	output(multiply_matrix_num(summation_matrixs(C2, multiply_matrix_num(C1, size, 2), size), size, 0.2), size);
+
+	cout << "2X + Y = C1  --->  2X = C1 - Y\n";
+	cout << "X - 2Y = C2  --->  X = C2 + 2Y  --->   2X = 2C2 + 4Y  ---->  C1 - Y = 2C2  = 4Y\n";
+	cout << "5Y = C1 - 2C2  --->  Y = (C1 - 2C2) / 5\n";
+	cout << "\nY = (C1 - 2C2) / 5\n";
+	output(multiply_matrix_num(summation_matrixs(C1, multiply_matrix_num(C2, size, -2), size), size, 0.2), size);
 }
